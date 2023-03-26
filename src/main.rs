@@ -12,6 +12,7 @@ mod prelude {
     pub use bevy::window::Window;
     pub use bevy_rapier2d::prelude::*;
     pub use bevy_egui::{egui, EguiContexts, EguiPlugin};
+    pub use bevy_inspector_egui::quick::WorldInspectorPlugin;
     pub use bevy_prototype_lyon::prelude::*;
     pub use rand::{thread_rng, Rng};
     pub use image::open;
@@ -42,6 +43,7 @@ fn main() {
             }
         ))
         .add_plugin(EguiPlugin)
+        //.add_plugin(WorldInspectorPlugin::new())
         .insert_resource(ClearColor(Color::rgb(0.,0.,0.)))
         .init_resource::<MousePosition>()
         .init_resource::<UiStatus>()
@@ -118,7 +120,7 @@ fn setup_graphics_system(mut commands: Commands, assets: Res<AssetServer>) {
     let text_align = TextAlignment::Center;
     commands.spawn((
         Text2dBundle {
-            text: Text::from_section("PHYSICS SANDBOX", text_style.clone())
+            text: Text::from_section("HYBRID", text_style.clone())
             .with_alignment(text_align),
             transform: Transform::from_translation(Vec3 {x:0.0, y:350.0, z:0.0}),
             ..default()

@@ -1,10 +1,35 @@
+use bevy_prototype_lyon::shapes::Circle;
+
 use crate::{prelude::*, LMBEvent};
+
+/* #[derive(Resource)]
+pub struct MarkerId(Entity);
+
+impl Default for MarkerId {
+    pub fn default(mut commands: Commands) -> Self {
+        let mark_circle = shapes::Circle {center: Vec2::ZERO, radius: 30.0};
+        let marker = commands.spawn((
+        ShapeBundle {
+            path: GeometryBuilder::build_as(&mark_circle),
+            ..Default::default()
+        },
+        Stroke::color(Color::SILVER),
+        )).id();
+        return Self {0: marker};
+    }
+} */
 
 #[derive(Component)]
 pub struct Agent{
     speed: f32,
     turn: f32,
     size: f32,
+}
+
+#[derive(Component)]
+pub struct AgentCondition {
+    max_eng: f32,
+    eng: f32,
 }
 
 #[derive(Component)]
@@ -17,7 +42,7 @@ pub struct NeuroTimer {
 
 impl Default for NeuroTimer {
     fn default() -> Self { 
-        Self {value: Timer::from_seconds(0.5, TimerMode::Repeating)} 
+        Self {value: Timer::from_seconds(0.35, TimerMode::Repeating)} 
     }
 }
 
@@ -49,6 +74,25 @@ impl Default for ThinkTimer {
     }
 }
 
+#[derive(Component)]
+pub struct Selected {
+    shape: ShapeBundle,
+    stroke: Stroke,
+}
+
+impl Selected {
+    pub fn new(color: Color, size: f32, tf: &Transform) -> Self {
+        let circle = shapes::Circle {center: Vec2::ZERO, radius: size};
+        let shape = ShapeBundle {
+            path: GeometryBuilder::build_as(&circle),
+            transform: *tf,
+            ..Default::default()
+        };
+        let stroke = Stroke::new(color, 1.0);
+        Self { shape: shape, stroke: stroke }
+    }
+}
+
 #[derive(Resource)]
 pub struct SelectedAgent(Vec<Entity>);
 
@@ -58,12 +102,16 @@ impl Default for SelectedAgent {
     }
 }
 
+#[derive(Component)]
+pub struct Marked;
+
 pub struct AgentPlugin;
 
 impl Plugin for AgentPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<SelectedAgent>();
+        //app.insert_resource(MarkerId);
         app.add_startup_system(create_agent_system);
+        //app.add_startup_system(spawn_marker_system);
         app.add_system(update_agent_system);
         app.add_system(wrap_elements);
         app.add_system(selected_by_mouse);
@@ -100,7 +148,7 @@ fn build_hexagon(size: f32) -> Vec<Vec2> {
 
 pub fn create_agent_system(mut commands: Commands) {
     let colors = ColorBox::new_with_colors();
-    for _ in 0..20 {
+    for _ in 0..AGENTS_NUM {
         let size = random_size(4, 10) as f32;
         let color = colors.choose_color_from_count(4);
         let pos = random_position(-WIN_SIZE.x/2.0+50.0, WIN_SIZE.x/2.0-50.0, -WIN_SIZE.y+50.0, WIN_SIZE.y/2.0-50.0);
@@ -121,6 +169,7 @@ pub fn create_agent_system(mut commands: Commands) {
                     RigidBody::Dynamic,
                 ))
                 .insert(Agent {speed: 5.0, turn: 0.01, size: size})
+                .insert(AgentCondition {max_eng: size.powi(2)*PI, eng: size.powi(2)*PI})
                 .insert(Neuro)
                 .insert(ThinkTimer::default())
                 .insert(TransformBundle::from_transform(Transform::from_translation(Vec3::new(pos.x, pos.y, 0.0))))
@@ -177,21 +226,25 @@ pub fn wrap_elements(mut agents: Query<(Entity, &mut Transform), With<Agent>>) {
 
 pub fn selected_by_mouse(
     mut commands: Commands,
+    mut query_selected: Query<(Entity, &mut Marked, &Children), (With<Marked>)>,
     mut query_agents: Query<(Entity, &Transform, &Collider, &Agent), (With<Agent>)>,
     mut lmb_events: EventReader<LMBEvent>,
-    mut selected: ResMut<SelectedAgent>
 ) {
     for event in lmb_events.iter() {
+        for (selected_entity, marked, children) in query_selected.iter_mut() {
+            let last = children.last().unwrap();
+            commands.entity(*last).despawn_recursive();
+            commands.entity(selected_entity).remove::<Marked>();
+        }
         let coords = event.0;
         let m = Vec2::new(WIN_SIZE.x/2.0, WIN_SIZE.y/2.0);
         for (entity, tf, collider, hex_agent) in query_agents.iter_mut() {
             let mut pos = Vec2::new(tf.translation.x, tf.translation.y);
             pos += m;
             let dist = pos.distance(coords);
-            println!("[coord] x:{} | y:{}\t<==>\t[pos] x:{} | y:{}\t[dist] {}", coords.x.round(), coords.y.round(), pos.x.round(), pos.y.round(), dist.round());
-            //if collider.contains_point(m, 0.0, coords) {
+            //println!("[coord] x:{} | y:{}\t<==>\t[pos] x:{} | y:{}\t[dist] {}", coords.x.round(), coords.y.round(), pos.x.round(), pos.y.round(), dist.round());
             if dist <= hex_agent.size*1.2 {
-                info!("SELECTED!");
+                commands.entity(entity).insert(Marked);
                 let mark_circle = shapes::Circle {center: Vec2::ZERO, radius: hex_agent.size*2.0};
                 let marker = commands.spawn((
                     ShapeBundle {
@@ -200,7 +253,7 @@ pub fn selected_by_mouse(
                     },
                     Stroke::color(Color::SILVER),
                 )).id();
-                commands.entity(entity).insert_children(0, &[marker]);
+                commands.entity(entity).insert_children(0,&[marker]);
                 return;
             }
         }

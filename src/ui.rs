@@ -119,8 +119,6 @@ fn main_panel_system(
             egui::menu::menu_button(ui, RichText::new("About").strong(), |ui| {
                 if ui.button("Documentation").clicked() {
                 }
-                if ui.button("Changes Log").clicked() {
-                }
                 if ui.button("About").clicked() {
                 }
             });

@@ -1,9 +1,8 @@
 [package]
 name = "hybrid"
-version = "0.2.0"
+version = "0.1.4"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["Artur Gwoździowski"]
 
 [dependencies]
 bevy = "0.10.0"
@@ -12,9 +11,10 @@ bevy_prototype_lyon = "0.8.0"
 bevy_rapier2d = "0.21.0"
 image = "0.24.5"
 rand = "0.8.5"
+bevy-inspector-egui = "0.18.1"
 
 [build-dependencies]
-embed-resource = "1.8.0"
+embed-resource = "2.0.0"
 
 [target.wasm32-unknown-unknown]
 runner = "wasm-server-runner"
